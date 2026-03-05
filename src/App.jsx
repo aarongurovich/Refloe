@@ -4,7 +4,8 @@ import './App.css';
 
 export default function App() {
   const [session, setSession] = useState(() => {
-    const saved = localStorage.getItem('trackr_session');
+    // Only store non-sensitive profile data (name, email, avatar) in localStorage
+    const saved = localStorage.getItem('trackr_profile');
     return saved ? JSON.parse(saved) : null;
   });
   const [loading, setLoading] = useState(false);
@@ -38,6 +39,7 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
+      // Supabase invoke will now receive the Set-Cookie header from the server
       const { data, error: funcError } = await supabase.functions.invoke('auth-handler', {
         body: { idToken: response.credential, action: 'google-login' }
       });
@@ -45,10 +47,10 @@ export default function App() {
       if (funcError) throw new Error(funcError.message);
       if (data?.error) throw new Error(data.error);
 
-      // Save user data and the secure JWT session token
-      const sessionData = { ...data.user, sessionToken: data.sessionToken };
-      localStorage.setItem('trackr_session', JSON.stringify(sessionData));
-      setSession(sessionData);
+      // Save user profile data ONLY. The sessionToken is handled as an HttpOnly cookie by the browser.
+      const profileData = { ...data.user };
+      localStorage.setItem('trackr_profile', JSON.stringify(profileData));
+      setSession(profileData);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -57,8 +59,11 @@ export default function App() {
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem('trackr_session');
+    // Clear profile from storage
+    localStorage.removeItem('trackr_profile');
     setSession(null);
+    // Note: To clear the HttpOnly cookie, you should call a backend 'logout' function
+    // that returns a Set-Cookie header with an expired date.
   };
 
   if (session) {
