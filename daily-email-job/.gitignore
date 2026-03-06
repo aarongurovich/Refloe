@@ -1,0 +1,9 @@
+.terraform
+.terraform.lock.hcl
+ai-email-classifier.zip
+layer.zip
+lambda-layer/python
+daily-email-fetcher.zip
+terraform.tfstate.backup
+terraform.tfvars
+terraform.tfstate

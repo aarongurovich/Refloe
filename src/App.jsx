@@ -144,19 +144,6 @@ function HeroPage({ onGetStarted, loading }) {
         </div>
       </section>
 
-      {/* Feature cards */}
-      <section className="features-section">
-        <div className="features-grid">
-          {features.map(f => (
-            <div className="feature-card" key={f.title}>
-              <div className="feature-icon">{f.icon}</div>
-              <h3 className="feature-title">{f.title}</h3>
-              <p className="feature-desc">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Google sign-in button (hidden, used for rendering) */}
       <div id="googleBtn" style={{ display: 'none' }} />
     </div>
@@ -164,171 +151,145 @@ function HeroPage({ onGetStarted, loading }) {
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-function Dashboard({ session, onSignOut, emails, isFetchingEmails, onFetchEmails, error }) {
-  const [view, setView] = useState('pipeline'); // 'pipeline' | 'raw'
+function Dashboard({ session, onSignOut, isFetchingEmails, error }) {
+  const [apps, setApps] = useState([]);
+  const [loadingDb, setLoadingDb] = useState(true);
 
-  // Parse emails into application cards (mocked structure; real AI output would match)
-  const apps = emails
-    ? emails.map((e, i) => ({
-        id: i,
-        company: e.company || e.from?.split('@')[1]?.split('.')[0] || 'Unknown',
-        role: e.role || e.subject || 'Position',
-        status: e.status || 'applied',
-        date: e.date ? new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—',
-        snippet: e.snippet || '',
-      }))
-    : [];
+  useEffect(() => {
+    if (!session || !session.id) {
+      console.log("Waiting for session ID...");
+      setLoadingDb(false);
+      return;
+    }
 
-  const grouped = Object.fromEntries(
-    Object.keys(STATUS_CONFIG).map(k => [k, apps.filter(a => a.status === k)])
-  );
+    let isMounted = true;
+    console.log("Session ready, fetching data for:", session.id);
 
-  const firstName = session.email?.split('@')[0] ?? 'there';
+    const formatAppData = (data) => data.map(app => ({
+      id: app.id,
+      company: app.company_name || 'Unknown Company',
+      role: app.job_title || 'Position',
+      status: app.status?.toLowerCase() || 'applied',
+      date: app.applied_date ? new Date(app.applied_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recent',
+      type: app.role_type || 'Full-time'
+    }));
+
+    const fetchClassifications = async () => {
+      setLoadingDb(true);
+      const { data, error: dbError } = await supabase
+        .from('ai_classifications')
+        .select('*')
+        .eq('user_id', session.id)
+        .order('applied_date', { ascending: false });
+
+      console.log("Supabase response:", { data, dbError });
+
+      if (isMounted) {
+        if (dbError) {
+          console.error("Database fetch error:", dbError);
+        } else if (data) {
+          setApps(formatAppData(data));
+        }
+        setLoadingDb(false);
+      }
+    };
+
+    fetchClassifications();
+
+    const channel = supabase
+      .channel('db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'ai_classifications',
+          filter: `user_id=eq.${session.id}`,
+        },
+        (payload) => {
+          if (isMounted) {
+            setApps((prev) => {
+              const formattedNewApp = formatAppData([payload.new])[0];
+              if (prev.some(app => app.id === formattedNewApp.id)) return prev;
+              return [formattedNewApp, ...prev];
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [session?.id]);
+
+  const stats = {
+    total: apps.length,
+    interviews: apps.filter(a => a.status === 'interviewing' || a.status === 'interview').length,
+    offers: apps.filter(a => a.status === 'offer').length
+  };
 
   return (
     <div className="dash-root">
-      <div className="dash-bg">
-        <div className="mesh-blob blob-1" style={{ opacity: 0.3 }} />
-        <div className="mesh-blob blob-2" style={{ opacity: 0.2 }} />
-      </div>
-
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-logo">Refloe</div>
-        <nav className="sidebar-nav">
-          <button
-            className={`sidebar-link ${view === 'pipeline' ? 'active' : ''}`}
-            onClick={() => setView('pipeline')}
-          >
-            <Icon.Briefcase /> Pipeline
-          </button>
-          <button
-            className={`sidebar-link ${view === 'raw' ? 'active' : ''}`}
-            onClick={() => setView('raw')}
-          >
-            <Icon.Mail /> Raw Emails
-          </button>
-        </nav>
-        <div className="sidebar-footer">
-          <div className="sidebar-user">
-            <div className="user-avatar">{session.email?.[0]?.toUpperCase()}</div>
-            <span className="user-email">{session.email}</span>
-          </div>
-          <button className="sign-out-btn" onClick={onSignOut} title="Sign out">
-            <Icon.LogOut />
-          </button>
-        </div>
-      </aside>
-
-      {/* Main content */}
       <main className="dash-main">
-        {/* Top bar */}
-        <header className="dash-header">
+        <header className="dash-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h1 className="dash-title">
-              {view === 'pipeline' ? 'Your Pipeline' : 'Email Scanner'}
-            </h1>
+            <h1 className="dash-title">Live Pipeline</h1>
             <p className="dash-sub">
-              {view === 'pipeline'
-                ? `${apps.length} application${apps.length !== 1 ? 's' : ''} tracked`
-                : `Scan Gmail to detect job applications`}
+              {isFetchingEmails ? (
+                <span className="scanning-text"><Icon.Sparkles /> AI is scanning your inbox...</span>
+              ) : (
+                `${stats.total} applications tracked`
+              )}
             </p>
           </div>
-          <button
-            className="btn-scan"
-            onClick={onFetchEmails}
-            disabled={isFetchingEmails}
-          >
-            {isFetchingEmails ? (
-              <><span className="spin">⟳</span> Scanning…</>
-            ) : (
-              <><Icon.Zap /> Scan Emails</>
-            )}
+          {/* Sign Out Button added here */}
+          <button className="nav-cta" onClick={onSignOut} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Icon.LogOut />
+            Sign Out
           </button>
         </header>
 
-        {error && <div className="error-banner">{error}</div>}
-
-        {/* Empty state */}
-        {!emails && !isFetchingEmails && (
+        {loadingDb ? (
+          <div className="loading-state">Syncing your pipeline...</div>
+        ) : apps.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon"><Icon.Inbox /></div>
-            <h2 className="empty-title">Ready to track</h2>
-            <p className="empty-desc">
-              Hit <strong>Scan Emails</strong> and Refloe's AI will comb through your Gmail,
-              extract every job application, and build your pipeline automatically.
-            </p>
-            <div className="empty-checks">
-              {['Detects applications, rejections & offers', 'Extracts company, role & dates', 'Zero manual data entry'].map(t => (
-                <span key={t} className="empty-check"><Icon.CheckCircle /> {t}</span>
-              ))}
-            </div>
+            <Icon.Inbox />
+            <h2>Waiting for data...</h2>
+            <p>Your AI scanner runs automatically. New applications will appear here in real-time.</p>
           </div>
-        )}
-
-        {isFetchingEmails && (
-          <div className="scanning-state">
-            <div className="scan-pulse" />
-            <p className="scan-text">AI is reading your emails…</p>
-            <p className="scan-sub">This may take a moment</p>
-          </div>
-        )}
-
-        {/* Pipeline view */}
-        {emails && view === 'pipeline' && (
+        ) : (
           <div className="pipeline-view">
-            {/* Summary chips */}
             <div className="summary-bar">
-              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                <div className="summary-chip" key={key} style={{ borderColor: cfg.color + '40', background: cfg.bg }}>
-                  <span className="chip-dot" style={{ background: cfg.color }} />
-                  <span className="chip-count" style={{ color: cfg.color }}>{grouped[key]?.length ?? 0}</span>
-                  <span className="chip-label">{cfg.label}</span>
-                </div>
-              ))}
+              <div className="summary-card"><span>Total</span> <strong>{stats.total}</strong></div>
+              <div className="summary-card"><span>Interviews</span> <strong style={{color: STATUS_CONFIG.interview.color}}>{stats.interviews}</strong></div>
+              <div className="summary-card"><span>Offers</span> <strong style={{color: STATUS_CONFIG.offer.color}}>{stats.offers}</strong></div>
             </div>
 
-            {/* Application cards */}
-            {apps.length === 0 ? (
-              <p style={{ color: 'var(--muted)', textAlign: 'center', marginTop: '3rem' }}>
-                No job applications detected in the scanned emails.
-              </p>
-            ) : (
-              <div className="app-grid">
-                {apps.map(app => {
-                  const cfg = STATUS_CONFIG[app.status] ?? STATUS_CONFIG.applied;
-                  return (
-                    <div className="app-card" key={app.id}>
-                      <div className="app-card-top">
-                        <div className="app-company-icon">
-                          {app.company[0]?.toUpperCase()}
-                        </div>
-                        <div className="app-card-info">
-                          <p className="app-company">
-                            <Icon.Building /> {app.company}
-                          </p>
-                          <p className="app-role">{app.role}</p>
-                        </div>
-                        <span className="app-status-badge" style={{ color: cfg.color, background: cfg.bg }}>
-                          {cfg.label}
-                        </span>
+            <div className="app-grid">
+              {apps.map(app => {
+                const config = STATUS_CONFIG[app.status] || STATUS_CONFIG.applied;
+                return (
+                  <div className="app-card slide-in" key={app.id}>
+                    <div className="app-card-header">
+                      <div className="app-icon-box"><Icon.Briefcase /></div>
+                      <div className="app-status-badge" style={{ backgroundColor: config.bg, color: config.color }}>
+                        {config.label}
                       </div>
-                      {app.snippet && (
-                        <p className="app-snippet">{app.snippet}</p>
-                      )}
-                      <p className="app-date"><Icon.Clock /> {app.date}</p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Raw emails view */}
-        {emails && view === 'raw' && (
-          <div className="raw-view">
-            <pre className="raw-json">{JSON.stringify(emails, null, 2)}</pre>
+                    <div className="app-card-body">
+                      <h3 className="app-company">{app.company}</h3>
+                      <p className="app-role">{app.role}</p>
+                    </div>
+                    <div className="app-card-footer">
+                      <div className="app-meta"><Icon.Clock /><span>{app.date}</span></div>
+                      <div className="app-type">{app.type}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </main>
@@ -344,65 +305,65 @@ export default function App() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [emails, setEmails] = useState(null);
   const [isFetchingEmails, setIsFetchingEmails] = useState(false);
 
-  useEffect(() => {
-    /* global google */
-    const initializeGoogle = () => {
-      if (!session && window.google) {
-        google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-          callback: handleGoogleSignIn,
-        });
-        google.accounts.id.renderButton(
-          document.getElementById('googleBtn'),
-          { theme: 'outline', size: 'large', width: '100', shape: 'pill' }
-        );
-      }
-    };
-    if (window.google) {
-      initializeGoogle();
-    } else {
-      const script = document.querySelector('script[src*="gsi/client"]');
-      if (script) script.addEventListener('load', initializeGoogle);
-    }
-  }, [session]);
+  // 1. Google Auth Code Flow Trigger
+  const handleGetStarted = () => {
+    if (!window.google) return;
 
-  const handleGoogleSignIn = async (response) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data, error: funcError } = await supabase.functions.invoke('auth-handler', {
-        body: { idToken: response.credential, action: 'google-login' }
-      });
-      if (funcError) throw new Error(funcError.message);
-      if (data?.error) throw new Error(data.error);
-      const profileData = { ...data.user };
-      localStorage.setItem('Refloe_profile', JSON.stringify(profileData));
-      setSession(profileData);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    const client = window.google.accounts.oauth2.initCodeClient({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      scope: 'openid email profile https://www.googleapis.com/auth/gmail.readonly',
+      ux_mode: 'popup',
+      access_type: 'offline', 
+      prompt: 'consent',     
+      callback: async (response) => {
+        if (response.code) {
+          setLoading(true);
+          try {
+            const { data, error: funcError } = await supabase.functions.invoke('auth-handler', {
+              body: { 
+                code: response.code, 
+                action: 'google-login' 
+              }
+            });
+            
+            if (funcError) throw new Error(funcError.message);
+            if (data?.error) throw new Error(data.error);
+
+            // Re-added the Supabase session fix so your RLS policy allows data to load!
+            if (data.session) {
+               await supabase.auth.setSession({
+                 access_token: data.session.access_token,
+                 refresh_token: data.session.refresh_token
+               });
+            }
+
+            setSession(data.user);
+            localStorage.setItem('Refloe_profile', JSON.stringify(data.user));
+          } catch (err) {
+            setError(err.message);
+          } finally {
+            setLoading(false);
+          }
+        }
+      },
+    });
+
+    client.requestCode();
   };
 
   const handleSignOut = async () => {
-    try {
-      await supabase.functions.invoke('sign-out');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      localStorage.removeItem('Refloe_profile');
-      setSession(null);
-      setEmails(null);
-    }
+    // 1. Tell Supabase to destroy the session securely
+    await supabase.auth.signOut();
+    // 2. Clear out local storage
+    localStorage.removeItem('Refloe_profile');
+    // 3. Reset React state to push user back to HeroPage
+    setSession(null);
   };
 
-  const handleConnectGmail = () => {
+  const handleManualScan = () => {
     if (!window.google) return;
-    setError(null);
     const client = window.google.accounts.oauth2.initTokenClient({
       client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
       scope: 'https://www.googleapis.com/auth/gmail.readonly',
@@ -410,11 +371,9 @@ export default function App() {
         if (tokenResponse?.access_token) {
           setIsFetchingEmails(true);
           try {
-            const { data, error } = await supabase.functions.invoke('fetch-emails', {
+            await supabase.functions.invoke('fetch-emails', {
               body: { accessToken: tokenResponse.access_token }
             });
-            if (error) throw new Error(error.message);
-            if (data?.emails) setEmails(data.emails);
           } catch (err) {
             setError(err.message);
           } finally {
@@ -426,25 +385,15 @@ export default function App() {
     client.requestAccessToken();
   };
 
-  // Trigger Google sign-in from hero CTA
-  const handleGetStarted = () => {
-    if (window.google) {
-      google.accounts.id.prompt();
-    }
-  };
-
-  if (session) {
-    return (
-      <Dashboard
-        session={session}
-        onSignOut={handleSignOut}
-        emails={emails}
-        isFetchingEmails={isFetchingEmails}
-        onFetchEmails={handleConnectGmail}
-        error={error}
-      />
-    );
-  }
-
-  return <HeroPage onGetStarted={handleGetStarted} loading={loading} />;
+  return session ? (
+    <Dashboard
+      session={session}
+      onSignOut={handleSignOut}
+      isFetchingEmails={isFetchingEmails}
+      onFetchEmails={handleManualScan}
+      error={error}
+    />
+  ) : (
+    <HeroPage onGetStarted={handleGetStarted} loading={loading} />
+  );
 }

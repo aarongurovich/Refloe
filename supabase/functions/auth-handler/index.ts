@@ -1,84 +1,103 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import * as jose from 'https://deno.land/x/jose@v4.14.4/index.ts'
+
+// 1. Define reusable CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
 
 Deno.serve(async (req) => {
-  // 1. Dynamic CORS setup to allow credentials (cookies)
-  const origin = req.headers.get('origin');
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': origin || '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Credentials': 'true', 
+  // 2. Handle the "Preflight" OPTIONS request immediately
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
   }
 
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-
   try {
-    const { idToken, action } = await req.json()
-    const GOOGLE_CLIENT_ID = Deno.env.get('VITE_GOOGLE_CLIENT_ID')
-    const JWT_SECRET = new TextEncoder().encode(Deno.env.get('SESSION_JWT_SECRET'))
+    const { code, action } = await req.json()
+    console.log(`Processing action: ${action} for code: ${code?.substring(0, 5)}...`)
 
-    if (action !== 'google-login' || !idToken) {
-      return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400, headers: corsHeaders })
+    const GOOGLE_CLIENT_ID = Deno.env.get('VITE_GOOGLE_CLIENT_ID')
+    const GOOGLE_CLIENT_SECRET = Deno.env.get('VITE_GOOGLE_CLIENT_SECRET')
+    const REDIRECT_URI = Deno.env.get('REDIRECT_URI')
+
+    if (action !== 'google-login' || !code) {
+      throw new Error('Invalid request parameters')
     }
 
-    // 2. Verify Google Token
-    const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`)
-    if (!googleRes.ok) throw new Error('Google token verification failed')
-    const payload = await googleRes.json()
+    // 3. Exchange Auth Code for Tokens with Google
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID!,
+        client_secret: GOOGLE_CLIENT_SECRET!,
+        redirect_uri: REDIRECT_URI!,
+        grant_type: 'authorization_code',
+      }),
+    });
 
-    if (payload.aud !== GOOGLE_CLIENT_ID) throw new Error('Audience mismatch')
+    const tokenData = await tokenResponse.json();
 
-    // 3. Initialize Supabase
+    if (!tokenResponse.ok) {
+      console.error("GOOGLE ERROR DETAIL:", JSON.stringify(tokenData));
+      throw new Error(tokenData.error_description || tokenData.error || 'Bad Request');
+    }
+
+    // Initialize Supabase Admin Client
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // 4. Upsert into public.users
-    const { data: user, error: dbError } = await supabase
+    // 4. BIG CHANGE: Let Supabase Auth handle the Google ID token!
+    // This creates the user in `auth.users` AND gives us a valid Supabase session.
+    const { data: authData, error: authError } = await supabase.auth.signInWithIdToken({
+      provider: 'google',
+      token: tokenData.id_token,
+    })
+
+    if (authError) {
+      console.error("Supabase Auth Error:", authError)
+      throw authError
+    }
+
+    // 5. Store the background sync tokens in your custom table.
+    // We only update refresh_token if Google provided a new one, 
+    // otherwise we might overwrite an existing valid one with null.
+    const updatePayload: any = {
+      id: authData.user.id, // Use the official Supabase Auth UUID
+      email: authData.user.email,
+      full_name: authData.user.user_metadata?.full_name || authData.user.user_metadata?.name || '',
+      google_access_token: tokenData.access_token,
+      last_login: new Date().toISOString()
+    }
+
+    if (tokenData.refresh_token) {
+      updatePayload.refresh_token = tokenData.refresh_token;
+    }
+
+    const { error: dbError } = await supabase
       .from('users')
-      .upsert({ 
-        email: payload.email,
-        google_id: payload.sub,
-        full_name: payload.name,
-        avatar_url: payload.picture,
-        last_login: new Date().toISOString()
-      }, { onConflict: 'email' })
-      .select()
-      .single()
+      .upsert(updatePayload, { onConflict: 'email' })
 
-    if (dbError) throw dbError
+    if (dbError) {
+      console.error("Database Upsert Error:", dbError)
+      throw dbError
+    }
 
-    // 5. Create secure Session JWT
-    const sessionToken = await new jose.SignJWT({ userId: user.id })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime('24h')
-      .sign(JWT_SECRET)
-
-    // 6. Environment-Aware Cookie Configuration
-    // Detect if we are in a local development environment
-    const isLocal = Deno.env.get('SUPABASE_URL')?.includes('localhost') || 
-                    Deno.env.get('SUPABASE_URL')?.includes('127.0.0.1');
-
-    // SameSite=None is required for cross-site cookies (Local dev usually uses different ports)
-    // SameSite=Lax is standard for production apps on the same/related domains
-    const sameSite = isLocal ? 'None' : 'Lax';
-    const secure = 'Secure'; // Always use Secure; required by browsers if SameSite=None
-
-    const cookie = `trackr_session=${sessionToken}; HttpOnly; Path=/; Max-Age=86400; SameSite=${sameSite}; ${secure}`;
-
-    return new Response(JSON.stringify({ user }), { 
-      headers: { 
-        ...corsHeaders, 
-        'Content-Type': 'application/json',
-        'Set-Cookie': cookie 
-      },
+    // 6. Return the native Supabase session to React!
+    return new Response(JSON.stringify({ 
+      user: authData.user,
+      session: authData.session // React uses this for `supabase.auth.setSession()`
+    }), { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200 
     })
 
   } catch (err) {
+    console.error("Critical Auth Error:", err.message)
     return new Response(JSON.stringify({ error: err.message }), { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 401 
