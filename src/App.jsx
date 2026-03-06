@@ -95,7 +95,7 @@ function HeroPage({ onGetStarted, loading }) {
 
       {/* Nav */}
       <nav className="hero-nav">
-        <span className="nav-logo">TRACKR</span>
+        <span className="nav-logo">Refloe</span>
         <button className="nav-cta" onClick={onGetStarted} disabled={loading}>
           {loading ? 'Loading…' : 'Get Started'}
           <Icon.ArrowRight />
@@ -116,7 +116,7 @@ function HeroPage({ onGetStarted, loading }) {
 
         <p className="hero-sub">
           Connect Gmail. Let AI do the work. Never lose track of an application again —
-          Trackr scans your emails and builds your pipeline automatically.
+          Refloe scans your emails and builds your pipeline automatically.
         </p>
 
         <div className="hero-cta-group">
@@ -194,7 +194,7 @@ function Dashboard({ session, onSignOut, emails, isFetchingEmails, onFetchEmails
 
       {/* Sidebar */}
       <aside className="sidebar">
-        <div className="sidebar-logo">TRACKR</div>
+        <div className="sidebar-logo">Refloe</div>
         <nav className="sidebar-nav">
           <button
             className={`sidebar-link ${view === 'pipeline' ? 'active' : ''}`}
@@ -255,7 +255,7 @@ function Dashboard({ session, onSignOut, emails, isFetchingEmails, onFetchEmails
             <div className="empty-icon"><Icon.Inbox /></div>
             <h2 className="empty-title">Ready to track</h2>
             <p className="empty-desc">
-              Hit <strong>Scan Emails</strong> and Trackr's AI will comb through your Gmail,
+              Hit <strong>Scan Emails</strong> and Refloe's AI will comb through your Gmail,
               extract every job application, and build your pipeline automatically.
             </p>
             <div className="empty-checks">
@@ -339,7 +339,7 @@ function Dashboard({ session, onSignOut, emails, isFetchingEmails, onFetchEmails
 // ─── Root App ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [session, setSession] = useState(() => {
-    const saved = localStorage.getItem('trackr_profile');
+    const saved = localStorage.getItem('Refloe_profile');
     return saved ? JSON.parse(saved) : null;
   });
   const [loading, setLoading] = useState(false);
@@ -379,7 +379,7 @@ export default function App() {
       if (funcError) throw new Error(funcError.message);
       if (data?.error) throw new Error(data.error);
       const profileData = { ...data.user };
-      localStorage.setItem('trackr_profile', JSON.stringify(profileData));
+      localStorage.setItem('Refloe_profile', JSON.stringify(profileData));
       setSession(profileData);
     } catch (err) {
       setError(err.message);
@@ -394,7 +394,7 @@ export default function App() {
     } catch (err) {
       console.error(err);
     } finally {
-      localStorage.removeItem('trackr_profile');
+      localStorage.removeItem('Refloe_profile');
       setSession(null);
       setEmails(null);
     }
