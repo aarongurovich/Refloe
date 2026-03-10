@@ -21,28 +21,33 @@ Deno.serve(async (req) => {
     )
 
     if (action === 'trigger-scan') {
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ scan_history_months: months })
-        .eq('id', userId)
-
-      if (updateError) throw updateError
-
       const lambdaUrl = Deno.env.get('LAMBDA_FETCHER_URL')
       const awsAccessKey = Deno.env.get('AWS_ACCESS_KEY_ID')
       const awsSecretKey = Deno.env.get('AWS_SECRET_ACCESS_KEY')
       const awsRegion = Deno.env.get('AWS_REGION') || 'us-east-1'
       
       if (!lambdaUrl || !awsAccessKey || !awsSecretKey) {
-        console.error("CRITICAL: Missing AWS configuration (LAMBDA_FETCHER_URL, AWS_ACCESS_KEY_ID, or AWS_SECRET_ACCESS_KEY)")
-      } else {
-        const awsClient = new AwsClient({
-          accessKeyId: awsAccessKey,
-          secretAccessKey: awsSecretKey,
-          region: awsRegion,
-          service: 'lambda',
-        })
+        throw new Error("CRITICAL: Missing AWS configuration (LAMBDA_FETCHER_URL, AWS_ACCESS_KEY_ID, or AWS_SECRET_ACCESS_KEY)")
+      }
 
+      const awsClient = new AwsClient({
+        accessKeyId: awsAccessKey,
+        secretAccessKey: awsSecretKey,
+        region: awsRegion,
+        service: 'lambda',
+      })
+
+      if (userId) {
+        // --- 1. Targeted Onboarding Scan ---
+        // Updates only the specific user joining the platform
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({ scan_history_months: months })
+          .eq('id', userId)
+
+        if (updateError) throw updateError
+
+        // Directly invokes Lambda for this user
         const lambdaRes = await awsClient.fetch(lambdaUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -52,6 +57,30 @@ Deno.serve(async (req) => {
         if (!lambdaRes.ok) {
           const errorText = await lambdaRes.text()
           console.error(`Lambda rejected the request: ${errorText}`)
+        }
+      } else {
+        // --- 2. Global Batch Scan ---
+        // Updates scan history for ALL users in the table
+        if (months !== undefined) {
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({ scan_history_months: months })
+            .not('id', 'is', null)
+
+          if (updateError) console.error("Global update error:", updateError)
+        }
+
+        // Sending an empty body triggers the "Dispatcher Mode" in your Python handler, 
+        // which sends all User IDs to the user-scan-queue
+        const lambdaRes = await awsClient.fetch(lambdaUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}) 
+        })
+
+        if (!lambdaRes.ok) {
+          const errorText = await lambdaRes.text()
+          console.error(`Lambda rejected the global request: ${errorText}`)
         }
       }
 

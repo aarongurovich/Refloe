@@ -1,5 +1,3 @@
-# daily-email-job/daily-email-fetcher/lambda_function.py
-
 import os
 import json
 import boto3
@@ -14,7 +12,8 @@ GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 MICROSOFT_CLIENT_ID = os.environ.get("MICROSOFT_CLIENT_ID")
 MICROSOFT_CLIENT_SECRET = os.environ.get("MICROSOFT_CLIENT_SECRET")
-QUEUE_URL = os.environ.get("SQS_QUEUE_URL")
+QUEUE_URL = os.environ.get("SQS_QUEUE_URL")       # For sending found emails to the classifier
+USER_QUEUE_URL = os.environ.get("USER_QUEUE_URL") # For dispatching user scan tasks
 
 # --- 2. Initializations ---
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -36,6 +35,7 @@ def get_google_access_token(refresh_token):
         return None
 
 def get_microsoft_access_token(refresh_token):
+    """Refreshes the Microsoft/Outlook access token."""
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     data = {
         'client_id': MICROSOFT_CLIENT_ID,
@@ -49,28 +49,16 @@ def get_microsoft_access_token(refresh_token):
 def process_user_emails(user_id, is_debug=False):
     """Fetches and processes emails for a single user."""
     if is_debug:
-        test_cases = [
-            "Dear Aaron Gurovich, we are pleased to offer you the position of Software Engineer at Tech Corp!",
-            "Hi Aaron Gurovich, you have an interview for the Production Engineer role at Meta.",
-            "Regretfully, Amazon is not moving forward with your application for SDE1.",
-            "Congratulations! We are pleased to offer you the Data Scientist role at NVIDIA.",
-            "Your weekly LinkedIn job alerts: 15 new Software Engineer roles in Lubbock, TX.",
-            "Hey Aaron, want to grab lunch today? Let me know if you're free.",
-            "Update from Tesla: Your interview for the Firmware Intern role is confirmed.",
-            "Netflix: Your subscription has been renewed.",
-            "Application Received: Full-stack Developer at Stripe.",
-            "Hi, this is a recruiter from OpenAI. We saw your GitHub and want to chat."
-        ]
-        print(f"DEBUG MODE: Sending {len(test_cases)} fake emails to SQS for user {user_id}.")
+        test_cases = ["Offer from Tech Corp", "Interview at Meta", "Regret from Amazon"]
         for i, text in enumerate(test_cases):
             payload = {
                 "email_body": text,
-                "source_email_id": f"test-1234{i}",
+                "source_email_id": f"test-{i}",
                 "user_id": user_id,
                 "applied_date": datetime.now().strftime('%Y-%m-%d')
             }
             sqs.send_message(QueueUrl=QUEUE_URL, MessageBody=json.dumps(payload))
-        return 10
+        return len(test_cases)
 
     try:
         user_resp = supabase.table("users").select("refresh_token, outlook_refresh_token, preferred_provider, scan_history_months").eq("id", user_id).single().execute()
@@ -96,7 +84,6 @@ def process_user_emails(user_id, is_debug=False):
                 msgs_resp.raise_for_status()
                 data = msgs_resp.json()
                 for msg_data in data.get('value', []):
-                    if messages_processed >= MAX_EMAILS: break
                     raw_date = msg_data.get('receivedDateTime', '')
                     payload = {
                         "email_body": msg_data.get('bodyPreview', ''),
@@ -127,7 +114,6 @@ def process_user_emails(user_id, is_debug=False):
                 messages = data.get('messages', [])
                 if not messages: break
                 for msg_meta in messages:
-                    if messages_processed >= MAX_EMAILS: break
                     msg_data = requests.get(f"https://www.googleapis.com/gmail/v1/users/me/messages/{msg_meta['id']}", headers=headers).json()
                     ms_timestamp = int(msg_data.get('internalDate', 0))
                     payload = {
@@ -141,6 +127,7 @@ def process_user_emails(user_id, is_debug=False):
                 next_page_token = data.get('nextPageToken')
                 if not next_page_token: break
 
+        # Reset the scan history months after processing
         if months > 0:
             supabase.table("users").update({"scan_history_months": 0}).eq("id", user_id).execute()
         return messages_processed
@@ -150,28 +137,57 @@ def process_user_emails(user_id, is_debug=False):
         return 0
 
 def handler(event, context):
+    """
+    Main entry point. Handles three scenarios:
+    1. Queue-triggered: Process 1 specific user.
+    2. URL/Direct-triggered: Process 1 specific user.
+    3. Scheduled/Global: Dispatch all users to the queue.
+    """
+    # SCENARIO 1: Triggered by SQS User Queue (Individual Work)
+    if "Records" in event:
+        for record in event['Records']:
+            try:
+                payload = json.loads(record['body'])
+                user_id = payload.get("user_id")
+                if user_id:
+                    print(f"SQS WORKER: Processing user {user_id}")
+                    processed = process_user_emails(user_id)
+                    return {"statusCode": 200, "body": f"User {user_id} processed: {processed} emails."}
+            except Exception as e:
+                print(f"Failed to parse SQS record: {e}")
+        return {"statusCode": 400, "body": "No valid user_id in queue message."}
+
+    # SCENARIO 2: Triggered by Direct URL/Body (Onboarding Scan)
     user_id = None
     is_debug = False
-
     if "body" in event and event["body"]:
         try:
             body_data = json.loads(event["body"])
             user_id = body_data.get("user_id")
             is_debug = body_data.get("debug") is True
-        except Exception: pass
+        except: pass
     else:
         user_id = event.get("user_id")
         is_debug = event.get("debug") is True
-    
-    # If triggered by CloudWatch (no user_id), fetch and process ALL users
-    if not user_id:
-        print("Scheduled scan: Processing all users.")
-        users_resp = supabase.table("users").select("id").execute()
-        total_processed = 0
-        for user in users_resp.data:
-            total_processed += process_user_emails(user['id'])
-        return {"statusCode": 200, "body": f"Scheduled scan complete. Processed {total_processed} emails across all users."}
 
-    # Process single user
-    processed = process_user_emails(user_id, is_debug)
-    return {"statusCode": 200, "body": f"Processed {processed} emails for user {user_id}."}
+    if user_id:
+        print(f"DIRECT TRIGGER: Processing user {user_id}")
+        processed = process_user_emails(user_id, is_debug)
+        return {"statusCode": 200, "body": f"Processed {processed} emails for user {user_id}."}
+
+    # SCENARIO 3: Scheduled Global Scan (CloudWatch) -> DISPATCHER MODE
+    print("GLOBAL DISPATCHER: Fetching all users from Supabase.")
+    users_resp = supabase.table("users").select("id").execute()
+    
+    count = 0
+    for user in users_resp.data:
+        sqs.send_message(
+            QueueUrl=USER_QUEUE_URL,
+            MessageBody=json.dumps({"user_id": user['id']})
+        )
+        count += 1
+        
+    return {
+        "statusCode": 200, 
+        "body": f"Dispatched {count} user scan tasks to SQS."
+    }
