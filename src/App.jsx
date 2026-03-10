@@ -1,8 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from './supabaseClient';
 import './App.css';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie, CartesianGrid, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis } from 'recharts';
+import {
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  BarChart, Bar, Cell, PieChart, Pie, CartesianGrid, Legend,
+  Radar, RadarChart, PolarGrid, PolarAngleAxis
+} from 'recharts';
 import html2canvas from 'html2canvas';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useNavigate
+} from 'react-router-dom';
 
 const Icon = {
   Briefcase: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>,
@@ -27,12 +37,12 @@ const Icon = {
 };
 
 const STATUS_CONFIG = {
-  applied:    { label: 'Applied',    color: '#60a5fa', bg: 'rgba(96,165,250,0.15)' },
-  interview:  { label: 'Interview',  color: '#a78bfa', bg: 'rgba(167,139,250,0.15)' },
-  interviewing:{ label: 'Interview', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)' },
-  offer:      { label: 'Offer',      color: '#34d399', bg: 'rgba(52,211,153,0.15)' },
-  rejected:   { label: 'Rejected',   color: '#f87171', bg: 'rgba(248,113,113,0.15)' },
-  ghosted:    { label: 'Ghosted',    color: '#94a3b8', bg: 'rgba(148,163,184,0.15)' },
+  applied: { label: 'Applied', color: '#60a5fa', bg: 'rgba(96,165,250,0.15)' },
+  interview: { label: 'Interview', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)' },
+  interviewing: { label: 'Interview', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)' },
+  offer: { label: 'Offer', color: '#34d399', bg: 'rgba(52,211,153,0.15)' },
+  rejected: { label: 'Rejected', color: '#f87171', bg: 'rgba(248,113,113,0.15)' },
+  ghosted: { label: 'Ghosted', color: '#94a3b8', bg: 'rgba(148,163,184,0.15)' },
 };
 
 const PIE_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#fbbf24', '#f87171', '#38bdf8'];
@@ -43,7 +53,9 @@ const CustomColorTooltip = ({ active, payload }) => {
     const color = data.payload.color || data.color || data.fill || '#f0f4ff';
     return (
       <div style={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '8px', padding: '10px 14px', fontSize: '13px' }}>
-        <span style={{ color: color, fontWeight: 600 }}>{data.payload.name || data.name}: {data.value}</span>
+        <span style={{ color, fontWeight: 600 }}>
+          {data.payload.name || data.name}: {data.value}
+        </span>
       </div>
     );
   }
@@ -55,21 +67,20 @@ const isSimilarCompany = (name1, name2) => {
   const normalize = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
   const n1 = normalize(name1);
   const n2 = normalize(name2);
-  
+
   if (n1 === n2) return true;
-  
+
   const stopWords = ['inc', 'corp', 'llc', 'ltd', 'company', 'brands', 'group', 'the', 'co', 'technologies', 'solutions', 'global', 'careers', 'talent', 'team', 'usa', 'na', 'system', 'systems', 'network', 'networks'];
-  
+
   const clean1 = n1.split(/\s+/).filter(w => !stopWords.includes(w) && w.length > 1);
   const clean2 = n2.split(/\s+/).filter(w => !stopWords.includes(w) && w.length > 1);
-  
+
   if (clean1.length === 0 || clean2.length === 0) return false;
-  
+
   const s1 = clean1.join(' ');
   const s2 = clean2.join(' ');
-  
+
   if (s1 === s2) return true;
-  
   if ((s1.startsWith(s2) || s2.startsWith(s1)) && Math.min(s1.length, s2.length) >= 3) return true;
   if (clean1[0] === clean2[0] && clean1[0].length >= 3) return true;
   if (` ${s1} `.includes(` ${s2} `) || ` ${s2} `.includes(` ${s1} `)) return true;
@@ -79,12 +90,16 @@ const isSimilarCompany = (name1, name2) => {
   return false;
 };
 
-function PrivacyPage({ onBack }) {
+function PrivacyPage() {
+  const navigate = useNavigate();
+
   return (
     <div className="legal-root">
       <nav className="hero-nav">
-        <span className="nav-logo" onClick={onBack} style={{ cursor: 'pointer' }}>Refloe</span>
-        <button className="nav-cta" onClick={onBack}><Icon.ChevronLeft /> Back</button>
+        <span className="nav-logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>Refloe</span>
+        <button className="nav-cta" onClick={() => navigate('/')}>
+          <Icon.ChevronLeft /> Back
+        </button>
       </nav>
       <div className="legal-container">
         <h1>Privacy Policy for Refloe</h1>
@@ -120,12 +135,16 @@ function PrivacyPage({ onBack }) {
   );
 }
 
-function TermsPage({ onBack }) {
+function TermsPage() {
+  const navigate = useNavigate();
+
   return (
     <div className="legal-root">
       <nav className="hero-nav">
-        <span className="nav-logo" onClick={onBack} style={{ cursor: 'pointer' }}>Refloe</span>
-        <button className="nav-cta" onClick={onBack}><Icon.ChevronLeft /> Back</button>
+        <span className="nav-logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>Refloe</span>
+        <button className="nav-cta" onClick={() => navigate('/')}>
+          <Icon.ChevronLeft /> Back
+        </button>
       </nav>
       <div className="legal-container">
         <h1>Terms of Service for Refloe</h1>
@@ -154,7 +173,9 @@ function TermsPage({ onBack }) {
   );
 }
 
-function HeroPage({ onGetStarted, onOutlookLogin, onPrivacy, onTerms, loading }) {
+function HeroPage({ onGetStarted, onOutlookLogin, loading }) {
+  const navigate = useNavigate();
+
   const stats = [
     { value: '2 min', label: 'Average setup' },
     { value: '100%', label: 'Auto-tracked' },
@@ -207,7 +228,12 @@ function HeroPage({ onGetStarted, onOutlookLogin, onPrivacy, onTerms, loading })
               )}
             </button>
 
-            <button className="btn-hero-secondary" onClick={onOutlookLogin} disabled={loading} style={{ backgroundColor: '#2f2f2f', color: 'white', border: '1px solid #444', padding: '0.8rem 1.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', fontWeight: '500' }}>
+            <button
+              className="btn-hero-secondary"
+              onClick={onOutlookLogin}
+              disabled={loading}
+              style={{ backgroundColor: '#2f2f2f', color: 'white', border: '1px solid #444', padding: '0.8rem 1.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', fontWeight: '500' }}
+            >
               {loading ? (
                 <span className="btn-loading">Verifying…</span>
               ) : (
@@ -233,8 +259,8 @@ function HeroPage({ onGetStarted, onOutlookLogin, onPrivacy, onTerms, loading })
 
       <footer className="hero-footer">
         <div className="footer-links">
-          <button onClick={onPrivacy} className="footer-link">Privacy Policy</button>
-          <button onClick={onTerms} className="footer-link">Terms of Service</button>
+          <button onClick={() => navigate('/privacy')} className="footer-link">Privacy Policy</button>
+          <button onClick={() => navigate('/terms')} className="footer-link">Terms of Service</button>
         </div>
         <p className="footer-copyright">© 2026 Refloe. All rights reserved.</p>
       </footer>
@@ -262,11 +288,10 @@ function HistoryPage({ onConfirm, loading }) {
   );
 }
 
+// Keep your Dashboard exactly as you already have it
 function Dashboard({ session, onSignOut, isFetchingEmails }) {
   const [apps, setApps] = useState([]);
   const [loadingDb, setLoadingDb] = useState(true);
-  
-  // Filtering & Sorting State
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'rawDate', direction: 'desc' });
   const [currentPage, setCurrentPage] = useState(1);
@@ -286,9 +311,9 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
         const rawName = (app.company_name || 'Unknown').trim();
         const rawDateStr = app.applied_date || app.parsed_date;
         const appDate = rawDateStr ? new Date(rawDateStr) : new Date(0);
-        
+
         const existingGroup = companyGroups.find(g => isSimilarCompany(g.company, rawName));
-        
+
         if (!existingGroup) {
           companyGroups.push({
             id: app.id,
@@ -296,7 +321,7 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
             role: app.job_title || 'Position',
             status: app.status?.toLowerCase() || 'applied',
             rawDate: rawDateStr,
-            earliestDate: appDate, 
+            earliestDate: appDate,
             date: app.applied_date ? new Date(app.applied_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent',
             type: (app.role_type && app.role_type !== 'Unknown') ? app.role_type : 'Full-time',
             stage: app.specific_stage,
@@ -308,7 +333,7 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
           });
         } else {
           if (rawName.length < existingGroup.company.length && rawName.length >= 3) {
-             existingGroup.company = rawName;
+            existingGroup.company = rawName;
           }
           if (appDate < existingGroup.earliestDate && appDate.getTime() > 0) {
             existingGroup.earliestDate = appDate;
@@ -333,7 +358,7 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
           }
         }
       });
-      
+
       setApps(companyGroups);
     }
     setLoadingDb(false);
@@ -350,11 +375,14 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
 
     const channel = supabase
       .channel('db-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ai_classifications', filter: `user_id=eq.${session.id}` },
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'ai_classifications', filter: `user_id=eq.${session.id}` },
         () => {
           if (isMounted) fetchClassifications();
         }
-      ).subscribe();
+      )
+      .subscribe();
 
     return () => {
       isMounted = false;
@@ -370,13 +398,13 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
     setSortConfig({ key, direction });
   };
 
-  const { stats, statusData, roleData, timelineData, radarData, topTitlesData, actionItems, paginatedApps, totalPages } = useMemo(() => {
+  const { stats, statusData, roleData, timelineData, radarData, actionItems, paginatedApps, totalPages } = useMemo(() => {
     const active = apps.filter(a => ['interview', 'interviewing'].includes(a.status));
     const offers = apps.filter(a => a.status === 'offer');
-    
+
     const interviewRate = apps.length > 0 ? Math.round((active.length / apps.length) * 100) : 0;
     const offerRate = apps.length > 0 ? Math.round((offers.length / apps.length) * 100) : 0;
-    
+
     const statusD = [
       { name: 'Applied', count: apps.filter(a => a.status === 'applied').length, color: '#60a5fa' },
       { name: 'Interview', count: active.length, color: '#a78bfa' },
@@ -393,7 +421,7 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
 
     const timeMap = {};
     apps.forEach(a => {
-      const d = a.earliestDate; 
+      const d = a.earliestDate;
       if (d && !isNaN(d.getTime()) && d.getTime() > 0) {
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -405,14 +433,13 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
     });
     const timeD = Object.values(timeMap).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
 
-    // Generic Role Archetypes Map
-    const radarMap = { 
-      'Engineering & IT': 0, 
-      'Sales & Marketing': 0, 
-      'Mgmt & Product': 0, 
-      'Design & Creative': 0, 
-      'Finance & Admin': 0, 
-      'Ops & Support': 0 
+    const radarMap = {
+      'Engineering & IT': 0,
+      'Sales & Marketing': 0,
+      'Mgmt & Product': 0,
+      'Design & Creative': 0,
+      'Finance & Admin': 0,
+      'Ops & Support': 0
     };
 
     apps.forEach(a => {
@@ -424,21 +451,10 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
       else if (/(finance|account|hr|legal|admin|talent|recruiter|financial|tax|audit|counsel)/.test(t)) radarMap['Finance & Admin']++;
       else radarMap['Ops & Support']++;
     });
-    
+
     let maxRadar = 1;
     Object.values(radarMap).forEach(v => { if (v > maxRadar) maxRadar = v; });
     const radarD = Object.keys(radarMap).map(k => ({ subject: k, count: radarMap[k], fullMark: maxRadar }));
-
-    const titleMap = {};
-    apps.forEach(a => {
-      let title = a.role || 'Unknown';
-      if (title.length > 18) title = title.substring(0, 18) + '...';
-      titleMap[title] = (titleMap[title] || 0) + 1;
-    });
-    const topTitlesD = Object.keys(titleMap)
-      .map(k => ({ name: k, count: titleMap[k] }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
 
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -455,7 +471,7 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
 
     if (searchTerm) {
       const lower = searchTerm.toLowerCase();
-      processedApps = processedApps.filter(app => 
+      processedApps = processedApps.filter(app =>
         (app.company && app.company.toLowerCase().includes(lower)) ||
         (app.role && app.role.toLowerCase().includes(lower)) ||
         (app.location && app.location.toLowerCase().includes(lower)) ||
@@ -465,7 +481,7 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
 
     processedApps.sort((a, b) => {
       if (!sortConfig.key) return 0;
-      
+
       let valA = a[sortConfig.key];
       let valB = b[sortConfig.key];
 
@@ -492,7 +508,6 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
       roleData: roleD,
       timelineData: timeD,
       radarData: radarD,
-      topTitlesData: topTitlesD,
       actionItems: topActionItems,
       paginatedApps: paginated,
       totalPages: totalP
@@ -537,7 +552,6 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
           </div>
         ) : (
           <div className="pipeline-view" id="shareable-dashboard" style={{ padding: '1.5rem', borderRadius: '1rem', background: 'var(--bg)' }}>
-            
             <div className="kpi-grid">
               <div className="kpi-card">
                 <div className="kpi-icon" style={{ background: 'rgba(96, 165, 250, 0.15)', color: '#60a5fa' }}><Icon.Briefcase /></div>
@@ -576,8 +590,8 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
                   <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={statusData} layout="vertical" margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
                       <XAxis type="number" hide />
-                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={85} tick={{fill: '#9ca3af', fontSize: 13}} />
-                      <Tooltip content={<CustomColorTooltip />} cursor={{fill: 'rgba(255,255,255,0.03)'}} />
+                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={85} tick={{ fill: '#9ca3af', fontSize: 13 }} />
+                      <Tooltip content={<CustomColorTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
                       <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={28}>
                         {statusData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
@@ -604,7 +618,7 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
                   </ResponsiveContainer>
                 </div>
               </div>
-              
+
               <div className="chart-container-prod">
                 <h3 className="chart-title">Role Archetypes</h3>
                 <div className="chart-wrapper">
@@ -618,7 +632,6 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
                   </ResponsiveContainer>
                 </div>
               </div>
-                            
 
               <div className="chart-container-prod span-full">
                 <h3 className="chart-title">Application Volume Over Time</h3>
@@ -627,13 +640,13 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
                     <AreaChart data={timelineData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorApps" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#60a5fa" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#60a5fa" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} dy={10} minTickGap={20} />
-                      <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} dx={-10} allowDecimals={false} />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} dy={10} minTickGap={20} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} dx={-10} allowDecimals={false} />
                       <Tooltip contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', borderRadius: '8px' }} itemStyle={{ color: '#f0f4ff' }} />
                       <Area type="monotone" dataKey="applications" stroke="#60a5fa" strokeWidth={3} fillOpacity={1} fill="url(#colorApps)" />
                     </AreaChart>
@@ -668,18 +681,18 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
                 <h3 className="chart-title" style={{ marginBottom: 0 }}>Application Master Log</h3>
                 <div className="search-box">
                   <Icon.Search />
-                  <input 
-                    type="text" 
-                    placeholder="Search roles, companies..." 
+                  <input
+                    type="text"
+                    placeholder="Search roles, companies..."
                     value={searchTerm}
                     onChange={(e) => {
                       setSearchTerm(e.target.value);
-                      setCurrentPage(1); 
+                      setCurrentPage(1);
                     }}
                   />
                 </div>
               </div>
-              
+
               <div className="table-container">
                 <table className="prod-table">
                   <thead>
@@ -734,20 +747,20 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
                   </tbody>
                 </table>
               </div>
-              
+
               {totalPages > 1 && (
                 <div className="pagination">
                   <span className="page-info">Page {currentPage} of {totalPages}</span>
                   <div className="page-controls">
-                    <button 
-                      disabled={currentPage === 1} 
+                    <button
+                      disabled={currentPage === 1}
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       className="page-btn"
                     >
                       <Icon.ChevronLeft />
                     </button>
-                    <button 
-                      disabled={currentPage === totalPages} 
+                    <button
+                      disabled={currentPage === totalPages}
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       className="page-btn"
                     >
@@ -757,7 +770,7 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
                 </div>
               )}
             </div>
-            
+
             <div className="watermark" style={{ display: 'none', textAlign: 'center', marginTop: '2rem', color: '#4f8ef7', fontWeight: 'bold' }}>
               Production Report - Generated by Refloe
             </div>
@@ -768,12 +781,11 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
   );
 }
 
-export default function App() {
+function AppContent() {
   const [session, setSession] = useState(() => {
     const saved = localStorage.getItem('Refloe_profile');
     return saved ? JSON.parse(saved) : null;
   });
-  const [legalView, setLegalView] = useState(null);
   const [tempAuth, setTempAuth] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isFetchingEmails, setIsFetchingEmails] = useState(false);
@@ -785,8 +797,8 @@ export default function App() {
       client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
       scope: 'openid email profile https://www.googleapis.com/auth/gmail.readonly',
       ux_mode: 'popup',
-      access_type: 'offline', 
-      prompt: 'consent',     
+      access_type: 'offline',
+      prompt: 'consent',
       callback: async (response) => {
         if (response.code) {
           setLoading(true);
@@ -794,7 +806,7 @@ export default function App() {
             const { data, error: funcError } = await supabase.functions.invoke('auth-handler', {
               body: { code: response.code, action: 'google-login' }
             });
-            
+
             if (funcError || data?.error) throw new Error(funcError?.message || data?.error);
 
             if (data.is_new_user) {
@@ -809,7 +821,6 @@ export default function App() {
               setSession(data.user);
               localStorage.setItem('Refloe_profile', JSON.stringify(data.user));
             }
-
           } catch (err) {
             console.error("Auth Error:", err.message);
           } finally {
@@ -818,13 +829,14 @@ export default function App() {
         }
       },
     });
+
     client.requestCode();
   };
 
   const handleOutlookLogin = () => {
     const client_id = import.meta.env.VITE_MICROSOFT_CLIENT_ID;
     const redirect_uri = import.meta.env.VITE_REDIRECT_URI;
-    
+
     if (!client_id || !redirect_uri) {
       console.error("Missing Microsoft Client ID or Redirect URI in environment variables.");
       alert("Configuration Error: Missing Client ID or Redirect URI.");
@@ -833,14 +845,15 @@ export default function App() {
 
     const encoded_redirect = encodeURIComponent(redirect_uri);
     const scope = encodeURIComponent("openid profile email Mail.Read offline_access");
-  
     const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encoded_redirect}&response_mode=query&scope=${scope}&prompt=consent`;
-    const width = 600, height = 700;
+
+    const width = 600;
+    const height = 700;
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
 
     const popup = window.open(authUrl, "outlook_login", `width=${width},height=${height},left=${left},top=${top}`);
-    
+
     if (!popup) {
       alert("Popup blocked. Please allow popups for this site.");
       return;
@@ -857,16 +870,16 @@ export default function App() {
         }
 
         const currentUrl = popup.location.href;
-        
+
         if (currentUrl && (currentUrl.includes("code=") || currentUrl.includes("error="))) {
           const codeMatch = currentUrl.match(/code=([^&]+)/);
           const errorMatch = currentUrl.match(/error=([^&]+)/);
           const errorDescMatch = currentUrl.match(/error_description=([^&]+)/);
-          
+
           const code = codeMatch ? decodeURIComponent(codeMatch[1]) : null;
           const error = errorMatch ? decodeURIComponent(errorMatch[1]) : null;
           const errorDesc = errorDescMatch ? decodeURIComponent(errorDescMatch[1].replace(/\+/g, ' ')) : 'No description';
-          
+
           popup.close();
           clearInterval(checkPayload);
 
@@ -881,7 +894,7 @@ export default function App() {
             const { data, error: funcError } = await supabase.functions.invoke('auth-handler', {
               body: { code, action: 'outlook-login' }
             });
-            
+
             if (funcError || data?.error) {
               console.error("Auth Error:", funcError?.message || data?.error);
               setLoading(false);
@@ -900,17 +913,18 @@ export default function App() {
               setSession(data.user);
               localStorage.setItem('Refloe_profile', JSON.stringify(data.user));
             }
+
             setLoading(false);
           }
         }
-      } catch (e) { 
+      } catch (e) {
       }
     }, 500);
   };
 
   const handleConfirmHistory = async (months) => {
     setLoading(true);
-    setIsFetchingEmails(true); 
+    setIsFetchingEmails(true);
 
     try {
       if (tempAuth.session) {
@@ -923,21 +937,21 @@ export default function App() {
       const activeUser = tempAuth.user;
       setSession(activeUser);
       localStorage.setItem('Refloe_profile', JSON.stringify(activeUser));
-      setTempAuth(null); 
-      setLoading(false); 
-      
+      setTempAuth(null);
+      setLoading(false);
+
       supabase.functions.invoke('auth-handler', {
-        body: { 
-          action: 'trigger-scan', 
-          userId: activeUser.id, 
-          months: months 
+        body: {
+          action: 'trigger-scan',
+          userId: activeUser.id,
+          months
         }
       }).then(({ error: scanError }) => {
-          if (scanError) console.error("Background Scan Error:", scanError);
+        if (scanError) console.error("Background Scan Error:", scanError);
       }).catch(err => {
-          console.error("Background scan invocation failed:", err);
+        console.error("Background scan invocation failed:", err);
       }).finally(() => {
-          setIsFetchingEmails(false); 
+        setIsFetchingEmails(false);
       });
 
     } catch (err) {
@@ -954,35 +968,28 @@ export default function App() {
     setTempAuth(null);
   };
 
-  if (legalView === 'privacy') return <PrivacyPage onBack={() => setLegalView(null)} />;
-  if (legalView === 'terms') return <TermsPage onBack={() => setLegalView(null)} />;
-
   if (session) {
-    return (
-      <Dashboard 
-        session={session} 
-        onSignOut={handleSignOut} 
-        isFetchingEmails={isFetchingEmails} 
-      />
-    );
+    return <Dashboard session={session} onSignOut={handleSignOut} isFetchingEmails={isFetchingEmails} />;
   }
 
   if (tempAuth) {
-    return (
-      <HistoryPage 
-        onConfirm={handleConfirmHistory} 
-        loading={loading} 
-      />
-    );
+    return <HistoryPage onConfirm={handleConfirmHistory} loading={loading} />;
   }
 
   return (
-    <HeroPage 
-      onGetStarted={handleGetStarted} 
-      onOutlookLogin={handleOutlookLogin}
-      onPrivacy={() => setLegalView('privacy')}
-      onTerms={() => setLegalView('terms')}
-      loading={loading} 
-    />
+    <Routes>
+      <Route path="/" element={<HeroPage onGetStarted={handleGetStarted} onOutlookLogin={handleOutlookLogin} loading={loading} />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="*" element={<HeroPage onGetStarted={handleGetStarted} onOutlookLogin={handleOutlookLogin} loading={loading} />} />
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }

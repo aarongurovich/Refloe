@@ -723,3 +723,70 @@ button { cursor: pointer; font-family: var(--font-body); border: none; backgroun
   align-items: center;
   gap: 6px;
 }
+
+/* Add to existing styles in */
+
+.legal-root {
+  min-height: 100vh;
+  background-color: #0d1220;
+  color: #f0f4ff;
+  padding: 2rem;
+}
+
+.legal-container {
+  max-width: 800px;
+  margin: 4rem auto;
+  line-height: 1.6;
+}
+
+.legal-container h1 {
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+  color: #fff;
+}
+
+.legal-container h3 {
+  color: #60a5fa;
+  margin-top: 2rem;
+}
+
+.legal-container ul {
+  padding-left: 1.5rem;
+  margin: 1rem 0;
+}
+
+.legal-container li {
+  margin-bottom: 0.5rem;
+}
+
+.hero-footer {
+  margin-top: auto;
+  padding: 4rem 2rem 2rem;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 1rem;
+}
+
+.footer-link {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+.footer-link:hover {
+  color: #60a5fa;
+}
+
+.footer-copyright {
+  color: #475569;
+  font-size: 0.8rem;
+}
