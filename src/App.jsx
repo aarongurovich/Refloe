@@ -12,7 +12,7 @@ import {
   Routes,
   Route,
   useNavigate,
-  Links
+  Link
 } from 'react-router-dom';
 
 const Icon = {
