@@ -45,7 +45,7 @@ resource "aws_lambda_function" "email_fetcher" {
   role          = aws_iam_role.lambda_exec.arn
   handler       = "lambda_function.handler"
   runtime       = "python3.10"
-  timeout       = 300
+  timeout       = 900
 
   filename         = data.archive_file.fetcher_zip.output_path
   source_code_hash = data.archive_file.fetcher_zip.output_base64sha256
@@ -149,4 +149,41 @@ resource "aws_lambda_function_url" "fetcher_url" {
 
 output "lambda_fetcher_url" {
   value = aws_lambda_function_url.fetcher_url.function_url
+}
+
+# 1. Create the IAM User for Supabase
+resource "aws_iam_user" "supabase_invoker" {
+  name = "refloe-supabase-invoker"
+}
+
+# 2. Generate the API keys for that user
+resource "aws_iam_access_key" "supabase_keys" {
+  user = aws_iam_user.supabase_invoker.name
+}
+
+# 3. Grant permission to invoke the Lambda URL
+resource "aws_iam_user_policy" "invoke_lambda" {
+  name = "refloe-invoke-lambda-policy"
+  user = aws_iam_user.supabase_invoker.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = "lambda:InvokeFunctionUrl"
+        Effect   = "Allow"
+        Resource = aws_lambda_function.email_fetcher.arn
+      }
+    ]
+  })
+}
+
+# Outputs so you can find the keys easily
+output "supabase_aws_access_key" {
+  value = aws_iam_access_key.supabase_keys.id
+}
+
+output "supabase_aws_secret_key" {
+  value     = aws_iam_access_key.supabase_keys.secret
+  sensitive = true
 }
