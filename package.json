@@ -10,6 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-crypto/sha256-js": "^5.2.0",
+    "@aws-sdk/protocol-http": "^3.370.0",
+    "@aws-sdk/querystring-parser": "^3.370.0",
+    "@aws-sdk/signature-v4": "^3.370.0",
     "@supabase/supabase-js": "^2.98.0",
     "deno": "^2.7.4",
     "html2canvas": "^1.4.1",

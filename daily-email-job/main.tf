@@ -144,7 +144,7 @@ resource "aws_iam_role_policy" "sqs_access" {
 
 resource "aws_lambda_function_url" "fetcher_url" {
   function_name      = aws_lambda_function.email_fetcher.function_name 
-  authorization_type = "NONE" 
+  authorization_type = "AWS_IAM" 
 }
 
 output "lambda_fetcher_url" {
