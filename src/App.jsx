@@ -431,7 +431,7 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
       <main className="dash-main">
         <header className="dash-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h1 className="dash-title">Production Dashboard</h1>
+            <h1 className="dash-title">Application Dashboard</h1>
             <p className="dash-sub">
               {isFetchingEmails ? <span className="scanning-text"><Icon.Sparkles /> AI is scanning your history...</span> : `${stats.total} unique companies tracked`}
             </p>

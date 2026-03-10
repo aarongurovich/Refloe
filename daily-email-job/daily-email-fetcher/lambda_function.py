@@ -75,7 +75,8 @@ def process_user_emails(user_id, is_debug=False):
             if not access_token: return 0
 
             headers = {'Authorization': f'Bearer {access_token}'}
-            past_date = datetime.now(timezone.utc) - timedelta(days=max(1, months*30))
+            days_to_scan = months * 30 if months > 0 else 1
+            past_date = datetime.now(timezone.utc) - timedelta(days=days_to_scan)
             date_str = past_date.strftime("%Y-%m-%dT%H:%M:%SZ")
             graph_url = f"https://graph.microsoft.com/v1.0/me/messages?$filter=receivedDateTime ge {date_str}&$select=id,bodyPreview,receivedDateTime&$top=50"
             
