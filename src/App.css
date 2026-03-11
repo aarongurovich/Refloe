@@ -743,101 +743,17 @@ table.dt tbody tr:last-child td { border-bottom:none; }
   .history-opts { grid-template-columns:1fr; }
 }
 @media (max-width:580px) {
-
   .hero-h1 { font-size:2.6rem; }
-
-  .hero-btns { 
-    flex-direction:column; 
-  }
-
-  .hero-btns .btn { 
-    width:100%; 
-  }
-
-  .kpi-row { 
-    grid-template-columns:1fr; 
-  }
-
-  .table-top { 
-    flex-direction:column; 
-    align-items:stretch;
-  }
-
-  .search-bar { 
-    width:100%; 
-  }
-
-  .pagination { 
-    flex-direction:column; 
-    gap:0.5rem;
-  }
-
-  .legal-wrap { 
-    padding:1.75rem; 
-  }
-
-  /* --- NAV FIXES --- */
-
-  .nav {
-    padding:0.65rem 1rem;
-    height:auto;
-    min-height:60px;
-    flex-wrap:wrap;
-    gap:0.5rem;
-  }
-
-  .nav-logo {
-    font-size:1.15rem;
-  }
-
-  .nav-mark {
-    width:24px;
-    height:24px;
-  }
-
-  .nav-spacer {
-    display:none;
-  }
-
-  .theme-toggle {
-    width:36px;
-    height:36px;
-    margin-left:auto;
-  }
-
-  /* stack nav buttons under logo/toggle */
-  .nav > .btn,
-  .nav > .dash-btns {
-    width:100%;
-  }
-
-  .dash-btns {
-    display:flex;
-    gap:0.5rem;
-    flex-wrap:wrap;
-  }
-
-  .dash-btns .btn {
-    flex:1 1 0;
-    min-width:0;
-  }
-
-  /* hide ticker on mobile */
-  .ticker-wrap { 
-    display:none; 
-  }
-
-  /* compensate for wrapped nav height */
-  .hero-root { 
-    padding-top:95px; 
-  }
-
-  .dash-page,
-  .legal-page,
-  .history-page {
-    padding-top:95px;
-  }
-
+  .hero-btns { flex-direction:column; }
+  .hero-btns .btn { width:100%; }
+  .kpi-row { grid-template-columns:1fr; }
+  .table-top { flex-direction:column; }
+  .search-bar { width:100%; }
+  .pagination { flex-direction:column; }
+  .legal-wrap { padding:1.75rem; }
+  .nav { padding:0 1rem; }
+  .ticker-wrap { display:none; }
+  .hero-root { padding-top:60px; }
 }
 @media (prefers-reduced-motion:reduce) {
   *, *::before, *::after { animation:none !important; transition:none !important; }
