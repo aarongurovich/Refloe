@@ -744,26 +744,53 @@ table.dt tbody tr:last-child td { border-bottom:none; }
 }
 @media (max-width:580px) {
   .hero-h1 { font-size:2.6rem; }
+
   .hero-btns { flex-direction:column; }
   .hero-btns .btn { width:100%; }
+
   .kpi-row { grid-template-columns:1fr; }
+
   .table-top { flex-direction:column; }
+
   .search-bar { width:100%; }
+
   .pagination { flex-direction:column; }
+
   .legal-wrap { padding:1.75rem; }
-  .nav { padding:0 1rem; }
+
+  .nav { 
+    padding:0 1rem;
+    justify-content:flex-start;
+    gap:0.4rem;
+  }
+
+  /* remove spacer so buttons move left */
+  .nav-spacer {
+    display:none;
+  }
+
+  /* keep dashboard buttons aligned nicely */
+  .dash-btns {
+    display:flex;
+    gap:0.3rem;
+  }
+
   .ticker-wrap { display:none; }
+
   .hero-root { padding-top:60px; }
+
+  /* smaller dark mode toggle */
   .theme-toggle {
-    width:28px;
-    height:28px;
+    width:26px;
+    height:26px;
   }
 
   .theme-toggle svg {
-    width:12px;
-    height:12px;
+    width:11px;
+    height:11px;
   }
 }
+
 @media (prefers-reduced-motion:reduce) {
   *, *::before, *::after { animation:none !important; transition:none !important; }
 }
