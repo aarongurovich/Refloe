@@ -738,7 +738,11 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
                       paginatedApps.map(app => {
                         const config = STATUS_CONFIG[app.status] || STATUS_CONFIG.applied;
                         return (
-                          <tr key={app.id} title={app.summary ? `Summary: ${app.summary}` : ''}>
+                          <tr 
+                            key={app.id} 
+                            title={app.summary ? `Summary: ${app.summary}` : 'No summary available'}
+                            className="hover-row"
+                          >
                             <td className="font-medium text-white">{app.company}</td>
                             <td>
                               <div className="cell-flex-col">

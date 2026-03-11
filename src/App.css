@@ -1043,6 +1043,15 @@ button { cursor: pointer; font-family: var(--font-body); border: none; backgroun
 }
 .legal-container li { margin-bottom: 0.5rem; }
 
+.prod-table tbody tr {
+  cursor: help; /* Indicates that more info is available on hover */
+  transition: background 0.2s ease;
+}
+
+.prod-table tr:hover td {
+  background: rgba(0, 229, 255, 0.05) !important; /* Slightly brighter highlight */
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════════
    RESPONSIVE (MOBILE) OVERRIDES
 ═══════════════════════════════════════════════════════════════════════════════ */
