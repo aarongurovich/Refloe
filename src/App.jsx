@@ -4,7 +4,7 @@ import './App.css';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell, PieChart, Pie, CartesianGrid, Legend,
-  Radar, RadarChart, PolarGrid, PolarAngleAxis
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, ComposedChart, Line
 } from 'recharts';
 import html2canvas from 'html2canvas';
 import { BrowserRouter, Routes, Route, useNavigate, Link } from 'react-router-dom';
@@ -30,17 +30,19 @@ const Ico = {
   Download: () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
   Mail: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>,
   Shield: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  Moon: () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
+  Sun: () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>,
 };
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
 const STATUS = {
-  applied:      { label: 'Applied',    color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
-  interview:    { label: 'Interview',  color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
-  interviewing: { label: 'Interview',  color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
-  offer:        { label: 'Offer',      color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' },
-  rejected:     { label: 'Rejected',   color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
-  ghosted:      { label: 'Ghosted',    color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
+  applied:      { label: 'Applied',    color: 'var(--tag-applied-color)',    bg: 'var(--tag-applied-bg)',    border: 'var(--tag-applied-border)'    },
+  interview:    { label: 'Interview',  color: 'var(--tag-interview-color)',  bg: 'var(--tag-interview-bg)',  border: 'var(--tag-interview-border)'  },
+  interviewing: { label: 'Interview',  color: 'var(--tag-interview-color)',  bg: 'var(--tag-interview-bg)',  border: 'var(--tag-interview-border)'  },
+  offer:        { label: 'Offer',      color: 'var(--tag-offer-color)',      bg: 'var(--tag-offer-bg)',      border: 'var(--tag-offer-border)'      },
+  rejected:     { label: 'Rejected',   color: 'var(--tag-rejected-color)',   bg: 'var(--tag-rejected-bg)',   border: 'var(--tag-rejected-border)'   },
+  ghosted:      { label: 'Ghosted',    color: 'var(--tag-ghosted-color)',    bg: 'var(--tag-ghosted-bg)',    border: 'var(--tag-ghosted-border)'    },
 };
 
 const CHART_COLORS = ['#7c3aed', '#3b82f6', '#059669', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -85,9 +87,57 @@ const TICKER_ITEMS = [
   'Interview Analytics', 'Offer Tracking', 'Application Intel',
 ];
 
+
+
+// ── Dark mode ─────────────────────────────────────────────────────────────────
+
+function useDarkMode() {
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem('refloe_dark') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    try { localStorage.setItem('refloe_dark', dark ? '1' : '0'); } catch {}
+  }, [dark]);
+  return [dark, () => setDark(d => !d)];
+}
+
+// ── Loading Screen ────────────────────────────────────────────────────────────
+
+function LoadingScreen({ message = 'Verifying your account…' }) {
+  const steps = [
+    { label: 'Authenticating identity', delay: 0 },
+    { label: 'Connecting to your inbox', delay: 0.4 },
+    { label: 'Setting up your workspace', delay: 0.8 },
+  ];
+  return (
+    <div className="loading-screen">
+      <div className="loading-card">
+        <div className="loading-logo">
+          <div className="loading-mark">R</div>
+          <span className="loading-wordmark">Refloe</span>
+        </div>
+        <div className="loading-spinner-wrap">
+          <div className="loading-ring" />
+          <div className="loading-ring loading-ring-2" />
+        </div>
+        <p className="loading-message">{message}</p>
+        <div className="loading-steps">
+          {steps.map((s, i) => (
+            <div className="loading-step" key={i} style={{ animationDelay: `${s.delay}s` }}>
+              <div className="loading-step-dot" style={{ animationDelay: `${s.delay + 0.2}s` }} />
+              <span>{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Nav ───────────────────────────────────────────────────────────────────────
 
-function Nav({ onLogoClick, actions }) {
+function Nav({ onLogoClick, actions, dark, onToggleDark }) {
   return (
     <nav className="nav">
       <div className="nav-logo" onClick={onLogoClick}>
@@ -96,6 +146,14 @@ function Nav({ onLogoClick, actions }) {
       </div>
       <div className="nav-spacer" />
       {actions}
+      <button
+        className="btn btn-ghost theme-toggle"
+        onClick={onToggleDark}
+        title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+        aria-label="Toggle dark mode"
+      >
+        {dark ? <Ico.Sun /> : <Ico.Moon />}
+      </button>
     </nav>
   );
 }
@@ -121,10 +179,11 @@ function Ticker() {
 // ── Legal pages ───────────────────────────────────────────────────────────────
 
 function PrivacyPage() {
+  const [dark, toggleDark] = useDarkMode();
   const nav = useNavigate();
   return (
     <div className="legal-page">
-      <Nav onLogoClick={() => nav('/')} actions={<button className="btn btn-ghost" onClick={() => nav('/')}><Ico.ChevL /> Back</button>} />
+      <Nav onLogoClick={() => nav('/')} dark={dark} onToggleDark={toggleDark} actions={<button className="btn btn-ghost" onClick={() => nav('/')}><Ico.ChevL /> Back</button>} />
       <div className="legal-wrap">
         <h1>Privacy Policy</h1>
         <section><h3>Introduction</h3><p>Refloe provides an AI-powered job application tracking service. We are committed to protecting your personal data and your privacy.</p></section>
@@ -145,10 +204,11 @@ function PrivacyPage() {
 }
 
 function TermsPage() {
+  const [dark, toggleDark] = useDarkMode();
   const nav = useNavigate();
   return (
     <div className="legal-page">
-      <Nav onLogoClick={() => nav('/')} actions={<button className="btn btn-ghost" onClick={() => nav('/')}><Ico.ChevL /> Back</button>} />
+      <Nav onLogoClick={() => nav('/')} dark={dark} onToggleDark={toggleDark} actions={<button className="btn btn-ghost" onClick={() => nav('/')}><Ico.ChevL /> Back</button>} />
       <div className="legal-wrap">
         <h1>Terms of Service</h1>
         <section><h3>Service Description</h3><p>Refloe is an automated tracking tool. By using the service, you authorize Refloe to access your designated email inbox to identify and organize job application data.</p></section>
@@ -163,7 +223,7 @@ function TermsPage() {
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
 
-function HeroPage({ onGmail, onOutlook, loading }) {
+function HeroPage({ onGmail, onOutlook, loading, dark, onToggleDark }) {
   const steps = [
     { n: '01', title: 'Connect your inbox', desc: 'Link Gmail or Outlook in under 60 seconds. No forwarding rules.' },
     { n: '02', title: 'AI reads everything', desc: 'Every application email is classified, dated, and enriched automatically.' },
@@ -180,6 +240,8 @@ function HeroPage({ onGmail, onOutlook, loading }) {
     <div className="hero-root page">
       <Nav
         onLogoClick={() => {}}
+        dark={dark}
+        onToggleDark={onToggleDark}
         actions={
           <button className="btn btn-primary" onClick={onGmail} disabled={loading}>
             {loading ? <span className="btn-loading">Connecting…</span> : <><Ico.Mail /> Get started free</>}
@@ -266,11 +328,11 @@ function HeroPage({ onGmail, onOutlook, loading }) {
 
 // ── History ───────────────────────────────────────────────────────────────────
 
-function HistoryPage({ onConfirm, loading }) {
+function HistoryPage({ onConfirm, loading, dark, onToggleDark }) {
   const nav = useNavigate();
   return (
     <div className="history-page page">
-      <Nav onLogoClick={() => nav('/')} actions={null} />
+      <Nav onLogoClick={() => nav('/')} dark={dark} onToggleDark={onToggleDark} actions={null} />
       <div className="history-box">
         <div className="history-icon-wrap"><Ico.Mail /></div>
         <h2 className="history-h">How far back<br /><em>should we look?</em></h2>
@@ -298,7 +360,7 @@ function HistoryPage({ onConfirm, loading }) {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
-function Dashboard({ session, onSignOut, isFetchingEmails }) {
+function Dashboard({ session, onSignOut, isFetchingEmails, dark, onToggleDark }) {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -404,6 +466,23 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
     Object.values(buckets).forEach(v => { if (v>maxR) maxR=v; });
     const radarData = Object.entries(buckets).map(([k,v])=>({subject:k,count:v,fullMark:maxR}));
 
+    // Outcome trend: group by month, split by status bucket
+    const monthMap = {};
+    apps.forEach(a => {
+      const d = a.earliest;
+      if (!d || isNaN(d.getTime()) || d.getTime() === 0) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      const lbl = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'});
+      if (!monthMap[key]) monthMap[key] = { name:lbl, _k:key, Applied:0, Interview:0, Offer:0, Rejected:0 };
+      const st = a.status;
+      if (st === 'applied')                              monthMap[key].Applied++;
+      else if (st === 'interview' || st==='interviewing') monthMap[key].Interview++;
+      else if (st === 'offer')                           monthMap[key].Offer++;
+      else if (st === 'rejected')                        monthMap[key].Rejected++;
+      else                                               monthMap[key].Applied++;
+    });
+    const outcomeTrend = Object.values(monthMap).sort((a,b)=>a._k.localeCompare(b._k));
+
     const now = new Date();
     const week = new Date(now.getTime()-7*86400000);
     const actionItems = apps
@@ -433,7 +512,7 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
     const paged = rows.slice(start, start+PER);
     const pages = Math.max(1, Math.ceil(rows.length/PER));
 
-    return { kpis: { total:apps.length, active:active.length, iRate, oRate }, statusData, roleData, timeData, radarData, actionItems, paged, pages };
+    return { kpis: { total:apps.length, active:active.length, iRate, oRate }, statusData, roleData, timeData, radarData, outcomeTrend, actionItems, paged, pages };
   }, [apps, search, sort, page]);
 
   const SortIco = ({k}) => sort.key===k ? (sort.dir==='asc'?<Ico.ChevU/>:<Ico.ChevD/>) : null;
@@ -456,16 +535,18 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
   };
 
   const kpiCards = [
-    { label: 'Total Applied',    val: derived.kpis.total,         icon: <Ico.Briefcase/>, color: '#7c3aed', bg: '#f5f3ff' },
-    { label: 'Active Processes', val: derived.kpis.active,        icon: <Ico.TrendUp/>,   color: '#2563eb', bg: '#eff6ff' },
-    { label: 'Interview Rate',   val: `${derived.kpis.iRate}%`,   icon: <Ico.Target/>,    color: '#f59e0b', bg: '#fffbeb' },
-    { label: 'Offer Rate',       val: `${derived.kpis.oRate}%`,   icon: <Ico.Check/>,     color: '#059669', bg: '#ecfdf5' },
+    { label: 'Total Applied',    val: derived.kpis.total,         icon: <Ico.Briefcase/>, color: 'var(--v-mid)',    bg: 'var(--v-pale)' },
+    { label: 'Active Processes', val: derived.kpis.active,        icon: <Ico.TrendUp/>,   color: 'var(--s-blue)',   bg: 'var(--s-blue-bg)' },
+    { label: 'Interview Rate',   val: `${derived.kpis.iRate}%`,   icon: <Ico.Target/>,    color: 'var(--s-amber)',  bg: 'var(--s-amber-bg)' },
+    { label: 'Offer Rate',       val: `${derived.kpis.oRate}%`,   icon: <Ico.Check/>,     color: 'var(--s-green)',  bg: 'var(--s-green-bg)' },
   ];
 
   return (
     <div className="dash-page page">
       <Nav
         onLogoClick={() => {}}
+        dark={dark}
+        onToggleDark={onToggleDark}
         actions={
           <div className="dash-btns">
             <button className="btn btn-secondary" onClick={handleExport}><Ico.Download/> Export</button>
@@ -520,7 +601,7 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
                   <ResponsiveContainer width="100%" height={230}>
                     <BarChart data={derived.statusData} layout="vertical" margin={{top:0,right:20,left:0,bottom:0}}>
                       <XAxis type="number" hide />
-                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={78} tick={{fill:'#a0a0bc',fontSize:12,fontFamily:'Figtree'}} />
+                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={78} tick={{fill:'var(--chart-tick)',fontSize:12,fontFamily:'Figtree'}} />
                       <Tooltip content={<ChartTip/>} cursor={{fill:'rgba(124,58,237,0.04)'}} />
                       <Bar dataKey="count" radius={[0,5,5,0]} barSize={22}>
                         {derived.statusData.map((e,i) => <Cell key={i} fill={e.color}/>)}
@@ -538,8 +619,8 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
                       <Pie data={derived.roleData} cx="50%" cy="42%" innerRadius={58} outerRadius={80} paddingAngle={3} dataKey="value">
                         {derived.roleData.map((e,i) => <Cell key={i} fill={e.color} stroke="transparent"/>)}
                       </Pie>
-                      <Tooltip contentStyle={{background:'#fff',border:'1px solid #e2e2ec',borderRadius:10,fontFamily:'Figtree'}} itemStyle={{color:'#6b6b8a'}} />
-                      <Legend verticalAlign="bottom" height={32} iconType="circle" wrapperStyle={{fontSize:12,color:'#a0a0bc',fontFamily:'Figtree',paddingTop:8}} />
+                      <Tooltip contentStyle={{background:'var(--tooltip-bg)',border:'1px solid var(--tooltip-border)',borderRadius:10,fontFamily:'Figtree',color:'var(--ink)'}} itemStyle={{color:'var(--muted)'}} />
+                      <Legend verticalAlign="bottom" height={32} iconType="circle" wrapperStyle={{fontSize:12,color:'var(--muted)',fontFamily:'Figtree',paddingTop:8}} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -550,11 +631,31 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
                 <div className="chart-body">
                   <ResponsiveContainer width="100%" height={230}>
                     <RadarChart cx="50%" cy="50%" outerRadius="68%" data={derived.radarData}>
-                      <PolarGrid stroke="#e2e2ec" />
-                      <PolarAngleAxis dataKey="subject" tick={{fill:'#a0a0bc',fontSize:11,fontFamily:'Figtree'}} />
+                      <PolarGrid stroke="var(--rule)" />
+                      <PolarAngleAxis dataKey="subject" tick={{fill:'var(--chart-tick)',fontSize:11,fontFamily:'Figtree'}} />
                       <Radar dataKey="count" stroke="#7c3aed" fill="#7c3aed" fillOpacity={0.15} strokeWidth={1.5} />
-                      <Tooltip contentStyle={{background:'#fff',border:'1px solid #e2e2ec',borderRadius:10,fontFamily:'Figtree'}} itemStyle={{color:'#6b6b8a'}} />
+                      <Tooltip contentStyle={{background:'var(--tooltip-bg)',border:'1px solid var(--tooltip-border)',borderRadius:10,fontFamily:'Figtree',color:'var(--ink)'}} itemStyle={{color:'var(--muted)'}} />
                     </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="panel">
+                <div className="panel-title">Monthly Outcome Breakdown</div>
+                <div className="chart-body">
+                  <ResponsiveContainer width="100%" height={230}>
+                    <ComposedChart data={derived.outcomeTrend} margin={{top:8,right:20,left:-8,bottom:0}}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'var(--chart-tick)',fontSize:11,fontFamily:'Figtree'}} dy={6} minTickGap={16} />
+                      <YAxis axisLine={false} tickLine={false} tick={{fill:'var(--chart-tick)',fontSize:11,fontFamily:'Figtree'}} dx={-4} allowDecimals={false} />
+                      <Tooltip contentStyle={{background:'var(--tooltip-bg)',border:'1px solid var(--tooltip-border)',borderRadius:10,fontFamily:'Figtree',fontSize:13,color:'var(--ink)'}} itemStyle={{color:'var(--muted)'}} />
+                      <Legend verticalAlign="top" height={28} iconType="circle" wrapperStyle={{fontSize:12,color:'var(--muted)',fontFamily:'Figtree',paddingBottom:8}} />
+                      <Bar dataKey="Applied"   stackId="a" fill={dark ? '#1e3a6e' : '#bfdbfe'} radius={[0,0,0,0]} barSize={28} />
+                      <Bar dataKey="Interview" stackId="a" fill={dark ? '#3d2c6e' : '#ddd6fe'} radius={[0,0,0,0]} barSize={28} />
+                      <Bar dataKey="Rejected"  stackId="a" fill={dark ? '#5a1c1c' : '#fecaca'} radius={[0,0,0,0]} barSize={28} />
+                      <Bar dataKey="Offer"     stackId="a" fill={dark ? '#134d38' : '#a7f3d0'} radius={[4,4,0,0]} barSize={28} />
+                      <Line type="monotone" dataKey="Offer" stroke={dark ? '#34d399' : '#059669'} strokeWidth={2} dot={{ fill: dark ? '#34d399' : '#059669', r:3 }} activeDot={{ r:5 }} />
+                    </ComposedChart>
                   </ResponsiveContainer>
                 </div>
               </div>
@@ -570,10 +671,10 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
                           <stop offset="95%" stopColor="#7c3aed" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f2f2f6" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'#a0a0bc',fontSize:11,fontFamily:'Figtree'}} dy={6} minTickGap={20} />
-                      <YAxis axisLine={false} tickLine={false} tick={{fill:'#a0a0bc',fontSize:11,fontFamily:'Figtree'}} dx={-4} allowDecimals={false} />
-                      <Tooltip contentStyle={{background:'#fff',border:'1px solid #e2e2ec',borderRadius:10,fontFamily:'Figtree'}} itemStyle={{color:'#6b6b8a'}} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'var(--chart-tick)',fontSize:11,fontFamily:'Figtree'}} dy={6} minTickGap={20} />
+                      <YAxis axisLine={false} tickLine={false} tick={{fill:'var(--chart-tick)',fontSize:11,fontFamily:'Figtree'}} dx={-4} allowDecimals={false} />
+                      <Tooltip contentStyle={{background:'var(--tooltip-bg)',border:'1px solid var(--tooltip-border)',borderRadius:10,fontFamily:'Figtree',color:'var(--ink)'}} itemStyle={{color:'var(--muted)'}} />
                       <Area type="monotone" dataKey="applications" stroke="#7c3aed" strokeWidth={2} fill="url(#ag)" />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -674,6 +775,7 @@ function Dashboard({ session, onSignOut, isFetchingEmails }) {
 // ── App ───────────────────────────────────────────────────────────────────────
 
 function AppContent() {
+  const [dark, toggleDark] = useDarkMode();
   const [session, setSession] = useState(() => {
     try { const s = localStorage.getItem('Refloe_profile'); return s ? JSON.parse(s) : null; } catch { return null; }
   });
@@ -753,15 +855,16 @@ function AppContent() {
     setSession(null); setTempAuth(null);
   };
 
-  if (tempAuth) return <HistoryPage onConfirm={handleConfirm} loading={loading} />;
-  if (session)  return <Dashboard session={session} onSignOut={handleSignOut} isFetchingEmails={scanning} />;
+  if (loading) return <LoadingScreen message={tempAuth ? 'Setting up your workspace…' : 'Verifying your account…'} />;
+  if (tempAuth) return <HistoryPage onConfirm={handleConfirm} loading={loading} dark={dark} onToggleDark={toggleDark} />;
+  if (session)  return <Dashboard session={session} onSignOut={handleSignOut} isFetchingEmails={scanning} dark={dark} onToggleDark={toggleDark} />;
 
   return (
     <Routes>
-      <Route path="/"        element={<HeroPage onGmail={handleGmail} onOutlook={handleOutlook} loading={loading} />} />
+      <Route path="/"        element={<HeroPage onGmail={handleGmail} onOutlook={handleOutlook} loading={loading} dark={dark} onToggleDark={toggleDark} />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms"   element={<TermsPage />} />
-      <Route path="*"        element={<HeroPage onGmail={handleGmail} onOutlook={handleOutlook} loading={loading} />} />
+      <Route path="*"        element={<HeroPage onGmail={handleGmail} onOutlook={handleOutlook} loading={loading} dark={dark} onToggleDark={toggleDark} />} />
     </Routes>
   );
 }
