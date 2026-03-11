@@ -87,8 +87,6 @@ const TICKER_ITEMS = [
   'Interview Analytics', 'Offer Tracking', 'Application Intel',
 ];
 
-
-
 // ── Dark mode ─────────────────────────────────────────────────────────────────
 
 function useDarkMode() {
@@ -149,10 +147,11 @@ function Nav({ onLogoClick, actions, dark, onToggleDark }) {
       <button
         className="btn btn-ghost theme-toggle"
         onClick={onToggleDark}
-        title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+        title="Toggle dark mode"
         aria-label="Toggle dark mode"
+        style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
       >
-        {dark ? <Ico.Sun /> : <Ico.Moon />}
+        <Ico.Moon /> 
       </button>
     </nav>
   );
@@ -654,7 +653,6 @@ function Dashboard({ session, onSignOut, isFetchingEmails, dark, onToggleDark })
                       <Bar dataKey="Interview" stackId="a" fill={dark ? '#3d2c6e' : '#ddd6fe'} radius={[0,0,0,0]} barSize={28} />
                       <Bar dataKey="Rejected"  stackId="a" fill={dark ? '#5a1c1c' : '#fecaca'} radius={[0,0,0,0]} barSize={28} />
                       <Bar dataKey="Offer"     stackId="a" fill={dark ? '#134d38' : '#a7f3d0'} radius={[4,4,0,0]} barSize={28} />
-                      <Line type="monotone" dataKey="Offer" stroke={dark ? '#34d399' : '#059669'} strokeWidth={2} dot={{ fill: dark ? '#34d399' : '#059669', r:3 }} activeDot={{ r:5 }} />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
