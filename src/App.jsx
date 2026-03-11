@@ -949,8 +949,9 @@ function AppContent() {
       }
 
       const activeUser = tempAuth.user;
-      setSession(activeUser);
+      
       localStorage.setItem('Refloe_profile', JSON.stringify(activeUser));
+      setSession(activeUser);
       setTempAuth(null);
       setLoading(false);
 
@@ -982,12 +983,12 @@ function AppContent() {
     setTempAuth(null);
   };
 
-  if (session) {
-    return <Dashboard session={session} onSignOut={handleSignOut} isFetchingEmails={isFetchingEmails} />;
-  }
-
   if (tempAuth) {
     return <HistoryPage onConfirm={handleConfirmHistory} loading={loading} />;
+  }
+
+  if (session) {
+    return <Dashboard session={session} onSignOut={handleSignOut} isFetchingEmails={isFetchingEmails} />;
   }
 
   return (
